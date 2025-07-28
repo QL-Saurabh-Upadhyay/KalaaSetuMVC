@@ -9,7 +9,7 @@ import torch
 import cv2
 import numpy as np
 from PIL import Image
-import moviepy as mp
+import moviepy.editor as mp
 from transformers import pipeline, AutoTokenizer, AutoModel
 import whisper
 from TTS.api import TTS
@@ -122,16 +122,16 @@ class AudioGenerator:
     
     def _get_voice_parameters(self, tone: Tone, domain: Domain) -> Dict:
         """Get voice parameters based on tone and domain"""
-        base_params = {"speaker_wav": None, "language": "en"}
+        base_params = {"speaker_wav": None}
         
         if tone == Tone.FORMAL:
-            base_params.update({"speed": 0.9, "emotion": "neutral"})
+            base_params.update({"speed": 0.9})
         elif tone == Tone.CASUAL:
-            base_params.update({"speed": 1.1, "emotion": "friendly"})
+            base_params.update({"speed": 1.1})
         elif tone == Tone.EMOTIONAL:
-            base_params.update({"speed": 0.8, "emotion": "empathetic"})
+            base_params.update({"speed": 0.8})
         elif tone == Tone.DOCUMENTARY:
-            base_params.update({"speed": 0.95, "emotion": "authoritative"})
+            base_params.update({"speed": 0.95})
             
         return base_params
 
@@ -152,19 +152,24 @@ class VisualGenerator:
     def generate_scene_images(self, text_segments: List[str], config: VideoConfig) -> List[str]:
         """Generate images for each text segment"""
         image_paths = []
+        output_dir = "outputs"
+        os.makedirs(output_dir, exist_ok=True)
         
         for i, segment in enumerate(text_segments):
             prompt = self._create_visual_prompt(segment, config)
-            
+            logger.info(f"Prompt: {prompt}")
             try:
                 image = self.image_generator(
                     prompt,
-                    num_inference_steps=20,
+                    num_inference_steps=1,
                     height=config.resolution[1],
                     width=config.resolution[0]
                 ).images[0]
                 
-                image_path = f"temp_scene_{i}_{int(time.time())}.png"
+                logger.info(f"Saving image to {output_dir}")
+                logger.info(f"Image: {image}")
+                image_path = os.path.join(output_dir, f"scene_{i}_{int(time.time())}.png")
+                logger.info(f"Image path: {image_path}")
                 image.save(image_path)
                 image_paths.append(image_path)
                 
@@ -215,8 +220,11 @@ class VisualGenerator:
     
     def _create_fallback_image(self, resolution: Tuple[int, int]) -> str:
         """Create a fallback image when generation fails"""
+        output_dir = "outputs"
+        os.makedirs(output_dir, exist_ok=True)
         img = Image.new('RGB', resolution, color='lightblue')
-        fallback_path = f"fallback_{int(time.time())}.png"
+        fallback_path = os.path.join(output_dir, f"fallback_{int(time.time())}.png")
+        print(f"Saving fallback image to {fallback_path}")
         img.save(fallback_path)
         return fallback_path
 
@@ -415,8 +423,8 @@ class TextToVideoGenerator:
             logger.info(f"Metrics: {metrics}")
             
             # Cleanup temporary files
-            self._cleanup_temp_files([audio_path] + image_paths + 
-                                   ([subtitle_path] if subtitle_path else []))
+            # self._cleanup_temp_files([audio_path] + image_paths + 
+            #                        ([subtitle_path] if subtitle_path else []))
             
             return video_path, metrics
             

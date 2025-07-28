@@ -34,6 +34,7 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 # Initialize video generation system
 video_api = VideoGenerationAPI()
+# video_api = VideoGenerationAPI(colab_url="https://a19746863eda.ngrok-free.app")
 
 # Store for tracking generation jobs
 generation_jobs = {}
@@ -87,14 +88,11 @@ def health_check():
 
 @app.route('/api/generate-video', methods=['POST'])
 def generate_video():
-    """Generate video from text with specified parameters"""
     try:
         data = request.get_json()
         logger.info(f"Received request to generate video with data: {data}")
-        # Validate required fields
         if not data or 'text' not in data:
             return jsonify({'error': 'Text is required'}), 400
-        
         if len(data['text'].strip()) == 0:
             return jsonify({'error': 'Text cannot be empty'}), 400
         
@@ -107,18 +105,16 @@ def generate_video():
                 duration=int(data.get('duration', 30)),
                 fps=int(data.get('fps', 24)),
                 resolution=tuple(data.get('resolution', [1920, 1080])),
-                language=data.get('language', 'en'),
+                language=data.get('language', 'en'),  # Keep for compatibility
                 include_subtitles=bool(data.get('include_subtitles', True)),
                 include_background_music=bool(data.get('include_background_music', False)),
                 avatar_narration=bool(data.get('avatar_narration', False))
             )
         except ValueError as e:
+            logger.error(f"Invalid configuration parameter: {e}")
             return jsonify({'error': f'Invalid configuration parameter: {e}'}), 400
         
-        # Generate unique job ID
         job_id = str(uuid.uuid4())
-        
-        # Create job
         job = GenerationJob(job_id, data['text'], config)
         generation_jobs[job_id] = job
         
@@ -133,10 +129,10 @@ def generate_video():
             'message': 'Video generation started',
             'estimated_time': f"{config.duration + 60} seconds"
         })
-        
+    
     except Exception as e:
-        logger.error(f"Error in generate_video endpoint: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.exception(f"Error in generate_video endpoint: {e}")  # Log full stack trace
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/api/job-status/<job_id>', methods=['GET'])
 def get_job_status(job_id):
