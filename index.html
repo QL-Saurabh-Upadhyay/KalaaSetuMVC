@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Video Generation Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        .output-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .demo-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .demo-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .status-queued { border-left-color: #f39c12; }
+        .status-processing { border-left-color: #3498db; }
+        .status-completed { border-left-color: #27ae60; }
+        .status-failed { border-left-color: #e74c3c; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2c3e50);
+            transition: width 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .metric-item {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .metric-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .video-player {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c66;
+        }
+        
+        .alert-success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #6c6;
+        }
+        
+        .alert-info {
+            background: #eef;
+            border: 1px solid #ccf;
+            color: #66c;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Text-to-Video Generator</h1>
+            <p>Transform your text into engaging video content with AI</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <h2>Generate Video</h2>
+                
+                <div class="demo-buttons">
+                    <button class="demo-btn" onclick="loadDemo('pib_release')">PIB Release</button>
+                    <button class="demo-btn" onclick="loadDemo('health_awareness')">Health Info</button>
+                    <button class="demo-btn" onclick="loadDemo('education_content')">Education</button>
+                </div>
+                
+                <form id="videoForm">
+                    <div class="form-group">
+                        <label for="text">Text Content</label>
+                        <textarea id="text" name="text" placeholder="Enter your text content here..." required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tone">Tone</label>
+                            <select id="tone" name="tone">
+                                <option value="formal">Formal</option>
+                                <option value="casual">Casual</option>
+                                <option value="emotional">Emotional</option>
+                                <option value="documentary">Documentary</option>
+                                <option value="informative">Informative</option>
+                                <option value="persuasive">Persuasive</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="domain">Domain</label>
+                            <select id="domain" name="domain">
+                                <option value="education">Education</option>
+                                <option value="health">Health</option>
+                                <option value="governance">Governance</option>
+                                <option value="entertainment">Entertainment</option>
+                                <option value="news">News</option>
+                                <option value="corporate">Corporate</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="environment">Environment</label>
+                            <select id="environment" name="environment">
+                                <option value="studio">Studio</option>
+                                <option value="rural">Rural</option>
+                                <option value="urban">Urban</option>
+                                <option value="futuristic">Futuristic</option>
+                                <option value="nature">Nature</option>
+                                <option value="indoors">Indoors</option>
+                                <option value="classroom">Classroom</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="duration">Duration (seconds)</label>
+                            <input type="number" id="duration" name="duration" value="30" min="10" max="120">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="subtitles" name="subtitles" checked> Include Subtitles
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="music" name="music"> Background Music
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="generateBtn">Generate Video</button>
+                </form>
+            </div>
+            
+            <div class="output-section">
+                <h2>Generation Status</h2>
+                <div id="statusContainer">
+                    <div class="alert alert-info">
+                        Ready to generate your video. Fill in the form and click "Generate Video" to start.
+                    </div>
+                </div>
+                
+                <div id="videoContainer" style="display: none;">
+                    <h3>Generated Video</h3>
+                    <video id="generatedVideo" class="video-player" controls>
+                        Your browser does not support the video tag.
+                    </video>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" id="downloadBtn" onclick="downloadVideo()">Download Video</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let pollInterval = null;
+        
+        // Demo content
+        const demoContent = {
+            pib_release: {
+                text: "The Government of India announces the launch of a new digital literacy program aimed at empowering rural communities with technology skills. This initiative will provide free internet access and digital training to over 10,000 villages across the country, ensuring no citizen is left behind in the digital revolution.",
+                tone: "formal",
+                domain: "governance",
+                environment: "rural",
+                duration: 25
+            },
+            health_awareness: {
+                text: "Regular exercise and a balanced diet are essential for maintaining good health. Walking for 30 minutes daily, eating plenty of fruits and vegetables, and staying hydrated can significantly improve your overall well-being and prevent many diseases.",
+                tone: "informative",
+                domain: "health",
+                environment: "nature",
+                duration: 20
+            },
+            education_content: {
+                text: "Climate change is one of the most pressing challenges of our time. Rising global temperatures, melting ice caps, and extreme weather events are clear indicators that immediate action is needed to protect our planet for future generations.",
+                tone: "documentary",
+                domain: "education",
+                environment: "nature",
+                duration: 30
+            }
+        };
+        
+        function loadDemo(type) {
+            const demo = demoContent[type];
+            if (demo) {
+                document.getElementById('text').value = demo.text;
+                document.getElementById('tone').value = demo.tone;
+                document.getElementById('domain').value = demo.domain;
+                document.getElementById('environment').value = demo.environment;
+                document.getElementById('duration').value = demo.duration;
+            }
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusContainer = document.getElementById('statusContainer');
+            statusContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+        
+        function showProgress(jobId, status, progress = 0) {
+            const statusContainer = document.getElementById('statusContainer');
+            const statusClass = `status-${status}`;
+            
+            statusContainer.innerHTML = `
+                <div class="status-card ${statusClass}">
+                    <h3>Job ID: ${jobId}</h3>
+                    <p>Status: <strong>${status.toUpperCase()}</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <p><small>Processing your video... This may take a few minutes.</small></p>
+                </div>
+            `;
+        }
+        
+        function showMetrics(metrics) {
+            const metricsHtml = `
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value">${metrics.inference_time.toFixed(1)}s</div>
+                        <div class="metric-label">Generation Time</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${metrics.memory_usage.toFixed(1)}%</div>
+                        <div class="metric-label">Memory Usage</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${metrics.frame_rate}</div>
+                        <div class="metric-label">Frame Rate</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${(metrics.scene_fidelity_score * 100).toFixed(1)}%</div>
+                        <div class="metric-label">Quality Score</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('statusContainer').innerHTML += metricsHtml;
+        }
+        
+        async function pollJobStatus(jobId) {
+            try {
+                const response = await fetch(`/api/job-status/${jobId}`);
+                const data = await response.json();
+                
+                if (data.status === 'completed') {
+                    clearInterval(pollInterval);
+                    showStatus('Video generation completed successfully!', 'success');
+                    
+                    if (data.metrics) {
+                        showMetrics(data.metrics);
+                    }
+                    
+                    // Show video player
+                    const videoContainer = document.getElementById('videoContainer');
+                    const video = document.getElementById('generatedVideo');
+                    video.src = data.download_url;
+                    videoContainer.style.display = 'block';
+                    
+                    // Re-enable generate button
+                    const generateBtn = document.getElementById('generateBtn');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Video';
+                    
+                } else if (data.status === 'failed') {
+                    clearInterval(pollInterval);
+                    showStatus(`Video generation failed: ${data.error_message || 'Unknown error'}`, 'error');
+                    
+                    const generateBtn = document.getElementById('generateBtn');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Video';
+                    
+                } else if (data.status === 'processing') {
+                    showProgress(jobId, data.status, 50);
+                } else {
+                    showProgress(jobId, data.status, 25);
+                }
+                
+            } catch (error) {
+                console.error('Error polling job status:', error);
+                clearInterval(pollInterval);
+                showStatus('Error checking job status. Please try again.', 'error');
+            }
+        }
+        
+        async function generateVideo(formData) {
+            try {
+                const response = await fetch('/api/generate-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentJobId = data.job_id;
+                    showProgress(currentJobId, 'queued', 10);
+                    
+                    // Start polling for status updates
+                    pollInterval = setInterval(() => {
+                        pollJobStatus(currentJobId);
+                    }, 2000);
+                    
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                    const generateBtn = document.getElementById('generateBtn');
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Video';
+                }
+                
+            } catch (error) {
+                console.error('Error generating video:', error);
+                showStatus('Network error. Please check your connection and try again.', 'error');
+                const generateBtn = document.getElementById('generateBtn');
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Video';
+            }
+        }
+        
+        function downloadVideo() {
+            if (currentJobId) {
+                window.open(`/api/download-video/${currentJobId}`, '_blank');
+            }
+        }
+        
+        // Form submission handler
+        document.getElementById('videoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating...';
+            
+            // Hide video container
+            document.getElementById('videoContainer').style.display = 'none';
+            
+            const formData = {
+                text: document.getElementById('text').value,
+                tone: document.getElementById('tone').value,
+                domain: document.getElementById('domain').value,
+                environment: document.getElementById('environment').value,
+                duration: parseInt(document.getElementById('duration').value),
+                include_subtitles: document.getElementById('subtitles').checked,
+                include_background_music: document.getElementById('music').checked
+            };
+            
+            await generateVideo(formData);
+        });
+        
+        // Clear any existing intervals when page loads
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+    </script>
+</body>
+</html>

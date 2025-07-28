@@ -1,0 +1,5 @@
+myenv/
+**/pycache/
+__pycache__/
+*.pyc
+*.pyo
