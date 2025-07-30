@@ -1,0 +1,11 @@
+boto3
+transformers
+torchaudio
+pydub
+pyngrok
+gtts
+groq
+flask
+pyngrok
+requests
+flask-cors
