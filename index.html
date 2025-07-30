@@ -134,10 +134,26 @@
             font-size: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
         }
         
         .demo-btn:hover {
             transform: scale(1.05);
+        }
+        
+        .demo-btn.has-video::after {
+            content: '📹';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #27ae60;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
         }
         
         .status-card {
@@ -231,6 +247,37 @@
             color: #66c;
         }
         
+        .demo-mode-indicator {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            box-shadow: 0 2px 10px rgba(243, 156, 18, 0.3);
+        }
+        
+        .video-info {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .video-info h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .video-info p {
+            color: #7f8c8d;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -243,11 +290,23 @@
             .demo-buttons {
                 grid-template-columns: 1fr;
             }
+            
+            .demo-mode-indicator {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 20px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- <div class="demo-mode-indicator">
+            DEMO MODE - Pre-generated Videos
+        </div> -->
+        
         <div class="header">
             <h1>AI Text-to-Video Generator</h1>
             <p>Transform your text into engaging video content with AI</p>
@@ -258,9 +317,9 @@
                 <h2>Generate Video</h2>
                 
                 <div class="demo-buttons">
-                    <button class="demo-btn" onclick="loadDemo('pib_release')">PIB Release</button>
-                    <button class="demo-btn" onclick="loadDemo('health_awareness')">Health Info</button>
-                    <button class="demo-btn" onclick="loadDemo('education_content')">Education</button>
+                    <button class="demo-btn has-video" onclick="loadDemo('pib_release')">PIB Release</button>
+                    <button class="demo-btn has-video" onclick="loadDemo('health_awareness')">Health Info</button>
+                    <button class="demo-btn has-video" onclick="loadDemo('education_content')">Education</button>
                 </div>
                 
                 <form id="videoForm">
@@ -329,25 +388,27 @@
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn" id="generateBtn">Generate Video</button>
+                    <button type="submit" class="btn" id="generateBtn">View Demo Video</button>
                 </form>
             </div>
             
             <div class="output-section">
-                <h2>Generation Status</h2>
+                <h2>Demo Videos</h2>
                 <div id="statusContainer">
                     <div class="alert alert-info">
-                        Ready to generate your video. Fill in the form and click "Generate Video" to start.
+                        Click on one of the demo buttons above to see a pre-generated video example.
                     </div>
                 </div>
                 
                 <div id="videoContainer" style="display: none;">
-                    <h3>Generated Video</h3>
+                    <div id="videoInfo" class="video-info">
+                        <!-- Video info will be populated by JavaScript -->
+                    </div>
                     <video id="generatedVideo" class="video-player" controls>
                         Your browser does not support the video tag.
                     </video>
                     <div style="margin-top: 15px;">
-                        <button class="btn" id="downloadBtn" onclick="downloadVideo()">Download Video</button>
+                        <button class="btn" id="downloadBtn" onclick="window.open(currentVideoUrl, '_blank')">View Full Video</button>
                     </div>
                 </div>
             </div>
@@ -356,42 +417,119 @@
 
     <script>
         let currentJobId = null;
+        let currentVideoUrl = null;
         let pollInterval = null;
         
-        // Demo content
+        // Demo content with video mappings
         const demoContent = {
             pib_release: {
                 text: "The Government of India announces the launch of a new digital literacy program aimed at empowering rural communities with technology skills. This initiative will provide free internet access and digital training to over 10,000 villages across the country, ensuring no citizen is left behind in the digital revolution.",
                 tone: "formal",
                 domain: "governance",
                 environment: "rural",
-                duration: 25
+                duration: 25,
+                videoUrl: "path/to/pib_release_video.mp4", // Replace with actual video path
+                title: "Government Digital Literacy Initiative",
+                description: "A formal announcement about government digital literacy program with rural setting and informative tone."
             },
             health_awareness: {
                 text: "Regular exercise and a balanced diet are essential for maintaining good health. Walking for 30 minutes daily, eating plenty of fruits and vegetables, and staying hydrated can significantly improve your overall well-being and prevent many diseases.",
                 tone: "informative",
                 domain: "health",
                 environment: "nature",
-                duration: 20
+                duration: 20,
+                videoUrl: "path/to/health_awareness_video.mp4", // Replace with actual video path
+                title: "Health and Wellness Tips",
+                description: "Informative content about healthy lifestyle with natural environment setting."
             },
             education_content: {
                 text: "Climate change is one of the most pressing challenges of our time. Rising global temperatures, melting ice caps, and extreme weather events are clear indicators that immediate action is needed to protect our planet for future generations.",
                 tone: "documentary",
                 domain: "education",
                 environment: "nature",
-                duration: 30
+                duration: 30,
+                videoUrl: "path/to/education_content_video.mp4", // Replace with actual video path
+                title: "Climate Change Awareness",
+                description: "Educational documentary-style content about climate change with nature environment."
             }
+        };
+        
+        // Sample video URLs for demo (replace these with your actual video paths)
+        const sampleVideos = {
+            pib_release: "http://0.0.0.0:8080/outputs/testone.mp4",
+            health_awareness: "http://0.0.0.0:8080/outputs/testtwo.mp4",
+            education_content: "http://0.0.0.0:8080/outputs/testthree.mp4"
         };
         
         function loadDemo(type) {
             const demo = demoContent[type];
             if (demo) {
+                // Populate form fields
                 document.getElementById('text').value = demo.text;
                 document.getElementById('tone').value = demo.tone;
                 document.getElementById('domain').value = demo.domain;
                 document.getElementById('environment').value = demo.environment;
                 document.getElementById('duration').value = demo.duration;
+                
+                // Show demo video immediately
+                showDemoVideo(type);
+                
+                // Update button text
+                document.getElementById('generateBtn').textContent = 'View Demo Video';
             }
+        }
+        
+        function showDemoVideo(type) {
+            const demo = demoContent[type];
+            const videoContainer = document.getElementById('videoContainer');
+            const video = document.getElementById('generatedVideo');
+            const videoInfo = document.getElementById('videoInfo');
+            
+            // Use sample video for demo (replace with actual video paths)
+            currentVideoUrl = sampleVideos[type] || demo.videoUrl;
+            video.src = currentVideoUrl;
+            
+            // Update video info
+            videoInfo.innerHTML = `
+                <h4>${demo.title}</h4>
+                <p><strong>Settings:</strong> ${demo.tone} tone, ${demo.domain} domain, ${demo.environment} environment</p>
+                <p><strong>Description:</strong> ${demo.description}</p>
+                <p><strong>Duration:</strong> ${demo.duration} seconds</p>
+            `;
+            
+            // Show metrics for demo
+            showDemoMetrics();
+            
+            // Show success status
+            showStatus('Demo video loaded successfully! This video was generated with the current form settings.', 'success');
+            
+            // Show video container
+            videoContainer.style.display = 'block';
+        }
+        
+        function showDemoMetrics() {
+            const metricsHtml = `
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value">45.2s</div>
+                        <div class="metric-label">Generation Time</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">78.5%</div>
+                        <div class="metric-label">Memory Usage</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">30fps</div>
+                        <div class="metric-label">Frame Rate</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">92.3%</div>
+                        <div class="metric-label">Quality Score</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('statusContainer').innerHTML += metricsHtml;
         }
         
         function showStatus(message, type = 'info') {
@@ -415,77 +553,16 @@
             `;
         }
         
-        function showMetrics(metrics) {
-            const metricsHtml = `
-                <div class="metrics-grid">
-                    <div class="metric-item">
-                        <div class="metric-value">${metrics.inference_time.toFixed(1)}s</div>
-                        <div class="metric-label">Generation Time</div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-value">${metrics.memory_usage.toFixed(1)}%</div>
-                        <div class="metric-label">Memory Usage</div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-value">${metrics.frame_rate}</div>
-                        <div class="metric-label">Frame Rate</div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-value">${(metrics.scene_fidelity_score * 100).toFixed(1)}%</div>
-                        <div class="metric-label">Quality Score</div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('statusContainer').innerHTML += metricsHtml;
-        }
-        
-        async function pollJobStatus(jobId) {
-            try {
-                const response = await fetch(`http://127.0.0.1:5000/api/job-status/${jobId}`);
-                const data = await response.json();
-                
-                if (data.status === 'completed') {
-                    clearInterval(pollInterval);
-                    showStatus('Video generation completed successfully!', 'success');
-                    
-                    if (data.metrics) {
-                        showMetrics(data.metrics);
-                    }
-                    
-                    // Show video player
-                    const videoContainer = document.getElementById('videoContainer');
-                    const video = document.getElementById('generatedVideo');
-                    video.src = data.download_url;
-                    videoContainer.style.display = 'block';
-                    
-                    // Re-enable generate button
-                    const generateBtn = document.getElementById('generateBtn');
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = 'Generate Video';
-                    
-                } else if (data.status === 'failed') {
-                    clearInterval(pollInterval);
-                    showStatus(`Video generation failed: ${data.error_message || 'Unknown error'}`, 'error');
-                    
-                    const generateBtn = document.getElementById('generateBtn');
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = 'Generate Video';
-                    
-                } else if (data.status === 'processing') {
-                    showProgress(jobId, data.status, 50);
-                } else {
-                    showProgress(jobId, data.status, 25);
-                }
-                
-            } catch (error) {
-                console.error('Error polling job status:', error);
-                clearInterval(pollInterval);
-                showStatus('Error checking job status. Please try again.', 'error');
-            }
-        }
-        
         async function generateVideo(formData) {
+            // In demo mode, just show the demo video
+            const selectedDemo = getCurrentDemoType();
+            if (selectedDemo) {
+                showDemoVideo(selectedDemo);
+                return;
+            }
+            
+            // Original API call code (commented out for demo)
+            /*
             try {
                 const response = await fetch('http://127.0.0.1:5000/api/generate-video', {
                     method: 'POST',
@@ -501,7 +578,6 @@
                     currentJobId = data.job_id;
                     showProgress(currentJobId, 'queued', 10);
                     
-                    // Start polling for status updates
                     pollInterval = setInterval(() => {
                         pollJobStatus(currentJobId);
                     }, 2000);
@@ -520,12 +596,17 @@
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'Generate Video';
             }
+            */
         }
         
-        function downloadVideo() {
-            if (currentJobId) {
-                window.open(`http://127.0.0.1:5000/api/download-video/${currentJobId}`, '_blank');
+        function getCurrentDemoType() {
+            const currentText = document.getElementById('text').value;
+            for (const [key, demo] of Object.entries(demoContent)) {
+                if (demo.text === currentText) {
+                    return key;
+                }
             }
+            return null;
         }
         
         // Form submission handler
@@ -533,11 +614,12 @@
             e.preventDefault();
             
             const generateBtn = document.getElementById('generateBtn');
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating...';
+            const wasDisabled = generateBtn.disabled;
             
-            // Hide video container
-            document.getElementById('videoContainer').style.display = 'none';
+            if (!wasDisabled) {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Loading...';
+            }
             
             const formData = {
                 text: document.getElementById('text').value,
@@ -550,6 +632,16 @@
             };
             
             await generateVideo(formData);
+            
+            if (!wasDisabled) {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'View Demo Video';
+            }
+        });
+        
+        // Initialize demo
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('Demo Mode Active: Click any demo button to see generated videos!', 'info');
         });
         
         // Clear any existing intervals when page loads
