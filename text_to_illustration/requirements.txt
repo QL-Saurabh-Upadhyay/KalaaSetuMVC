@@ -1,0 +1,14 @@
+torchvision
+accelerate
+fastapi
+uvicorn
+nest-asyncio
+pyngrok
+jinja2
+groq
+diffusers
+transformers
+safetensors
+
+
+
