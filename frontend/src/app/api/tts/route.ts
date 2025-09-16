@@ -7,7 +7,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const target = "https://5e926a48df20.ngrok-free.app" + '/tts';
+    const target = "https://e54c610b5725.ngrok-free.app" + '/tts';
 
     const upstream = await fetch(target, {
       method: 'POST',

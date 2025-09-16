@@ -8,7 +8,7 @@ const AUDIO_BASE_URL = process.env.AUDIO_BASE_URL || '';
 export async function GET() {
  
 
-  const target = "https://5e926a48df20.ngrok-free.app" + '/tts/options';
+  const target = "https://e54c610b5725.ngrok-free.app" + '/tts/options';
 
   try {
     const resp = await fetch(target, { headers: { Accept: 'application/json' } });

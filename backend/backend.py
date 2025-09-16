@@ -219,7 +219,7 @@ Do not explain anything. Do not include any text outside the JSON.
 async def generate_storyboard(request: Request, prompt: str = Form(...)):
     # 1. Call LLM to split into scenes
     response = client.chat.completions.create(
-        model="llama3-70b-8192",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": storyboard_system_prompt},
             {"role": "user", "content": prompt}
@@ -301,7 +301,7 @@ def is_port_in_use(port):
 if is_port_in_use(8081):
     print("⚠️ Port 8081 is already in use! Stop previous server before running again.")
     sys.exit(1)
-    
+
 # Start ngrok tunnel
 public_url = ngrok.connect(8081)
 print(f"Open this in your browser: {public_url}")
