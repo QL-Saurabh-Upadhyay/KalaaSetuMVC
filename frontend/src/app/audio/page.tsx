@@ -5,6 +5,7 @@ import { useTheme } from "../context/ThemeContext";
 import {
   apiService,
   EmotionDetectionResponse,
+  getSettings,
   SpeechGenerationRequest,
   SpeechGenerationResponse,
 } from "../services/api";
@@ -24,7 +25,7 @@ export default function AudioPage() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detectedEmotion, setDetectedEmotion] = useState<string | null>(null);
-
+  const settings = getSettings();
   // Get gradient classes based on theme
   const getGradientClass = (type: "primary" | "secondary") => {
     const gradients = {
@@ -63,15 +64,17 @@ export default function AudioPage() {
     setAudioUrl(null);
     setDetectedEmotion(null);
 
+    if (!settings.audioBaseUrl) {
+      throw new Error("Audio API URL not configured");
+    }
     try {
       // Step 1: Detect emotion from text
-      const genrateSpeechRequest :SpeechGenerationRequest = {
+      const genrateSpeechRequest: SpeechGenerationRequest = {
         text: text.trim(),
         target_laguage: language,
         speaker: speaker || undefined,
-       
-
-      }
+        base_url_override: settings.audioBaseUrl,
+      };
       const emotionResponse: SpeechGenerationResponse =
         await apiService.generateSpeech(genrateSpeechRequest);
 
@@ -82,21 +85,10 @@ export default function AudioPage() {
       const detectedEmotion = emotionResponse.audio_url;
       setDetectedEmotion(detectedEmotion);
 
-      // Step 2: Generate speech with the detected emotion
-      const speechRequest: SpeechGenerationRequest = {
-        text: text.trim(),
-        emotion: detectedEmotion,
-        // include optional voice/language fields the backend may use
-        voice: speaker || undefined,
-        language: language || undefined,
-      } as any;
-
-      const speechResponse = await apiService.generateSpeech(speechRequest);
-
-      if (speechResponse.success && speechResponse.audio_url) {
-        setAudioUrl(speechResponse.audio_url);
+      if (emotionResponse.success && emotionResponse.audio_url) {
+        setAudioUrl(emotionResponse.audio_url);
       } else {
-        throw new Error(speechResponse.error || "Speech generation failed");
+        throw new Error(emotionResponse.error || "Speech generation failed");
       }
     } catch (error) {
       setError(
@@ -118,7 +110,13 @@ export default function AudioPage() {
         // Call our server-side proxy which wraps the real backend. This avoids
         // coupling the client to a localStorage audioBaseUrl and centralizes the
         // error handling for ngrok/landing pages on the server side.
-        const resp = await fetch("/api/tts/options", { method: "GET", headers: { Accept: "application/json" } });
+        const resp = await fetch("/api/tts/options", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            base_url_override: settings.audioBaseUrl,
+          },
+        });
         if (!resp.ok) {
           console.error("Proxy options request failed", resp.status);
           const body = await resp.text().catch(() => "");
@@ -137,7 +135,10 @@ export default function AudioPage() {
 
         if (!wrapper || !wrapper.ok || !wrapper.data) {
           console.error("/api/tts/options returned error", wrapper);
-          if (mounted) setError(wrapper?.error || "Failed to load TTS options from upstream");
+          if (mounted)
+            setError(
+              wrapper?.error || "Failed to load TTS options from upstream"
+            );
           return;
         }
 
@@ -145,8 +146,14 @@ export default function AudioPage() {
         if (mounted) {
           setOptions(data);
           if (data.languages && data.languages.length > 0)
-            setLanguage(data.languages.includes("hi") ? "hi" : data.languages[0]);
-          if (data.speakers && data.speakers[language] && data.speakers[language].length > 0)
+            setLanguage(
+              data.languages.includes("hi") ? "hi" : data.languages[0]
+            );
+          if (
+            data.speakers &&
+            data.speakers[language] &&
+            data.speakers[language].length > 0
+          )
             setSpeaker(data.speakers[language][0]);
         }
       } catch (e) {

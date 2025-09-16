@@ -3,12 +3,10 @@ import { NextResponse } from 'next/server';
 // Proxy endpoint to fetch TTS options from configured backend.
 // Set AUDIO_BASE_URL in the Next/Deployment environment to the public backend URL (no trailing slash).
 
-const AUDIO_BASE_URL = process.env.AUDIO_BASE_URL || '';
-
-export async function GET() {
+export async function GET(request:Request) {
  
-
-  const target = "https://e54c610b5725.ngrok-free.app" + '/tts/options';
+ const headers = request.headers.get("base_url_override")
+  const target = headers + '/tts/options';
 
   try {
     const resp = await fetch(target, { headers: { Accept: 'application/json' } });

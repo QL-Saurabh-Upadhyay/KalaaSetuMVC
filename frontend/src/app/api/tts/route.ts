@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
 
-const AUDIO_BASE_URL = process.env.AUDIO_BASE_URL || '';
 
 export async function POST(req: Request) {
  
 
   try {
     const body = await req.json();
-    const target = "https://e54c610b5725.ngrok-free.app" + '/tts';
-
+    const target = body.base_url_override + '/tts';
     const upstream = await fetch(target, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'audio/*, application/json' },
       body: JSON.stringify(body),
     });
-
+    
     // If upstream returned non-OK, try to read JSON and forward
     if (!upstream.ok) {
       const text = await upstream.text().catch(() => '');

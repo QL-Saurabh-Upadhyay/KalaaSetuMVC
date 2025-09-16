@@ -56,6 +56,7 @@ export interface SpeechGenerationRequest {
   text: string;
   target_laguage?: string;
   speaker?: string;
+  base_url_override?: string; // Optional field to override base URL
  
 }
 
@@ -76,7 +77,7 @@ interface ApiSettings {
 }
 
 // Get settings from localStorage
-const getSettings = (): ApiSettings => {
+export const getSettings = (): ApiSettings => {
   if (typeof window === 'undefined') {
     return {
       infographicBaseUrl: '',
