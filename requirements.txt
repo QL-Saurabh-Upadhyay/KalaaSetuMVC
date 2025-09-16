@@ -8,11 +8,10 @@ diffusers
 accelerate
 opencv-python
 pillow
-numpy==1.22.0
+numpy>=1.26
 scipy
 librosa
 soundfile
-TTS==0.22.0
 ffmpeg-python
 psutil
 requests
@@ -23,7 +22,7 @@ sentence-transformers
 scikit-learn
 matplotlib
 seaborn
-pandas>=1.4,<2.0
+pandas>=2.2.2,<3.0
 pytest
 python-dotenv
 moviepy

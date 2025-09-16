@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 import os
 import json
@@ -85,6 +85,46 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'version': '1.0.0'
     })
+
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint: serve frontend if available, else list API endpoints"""
+    index_path = os.path.join(os.path.dirname(__file__), 'index.html')
+    if os.path.exists(index_path):
+        try:
+            return send_from_directory(os.path.dirname(index_path), 'index.html')
+        except Exception as e:
+            logger.warning(f"Failed to serve index.html: {e}")
+    return jsonify({
+        'service': 'text-to-video-generation',
+        'message': 'Welcome to the Text-to-Video API',
+        'endpoints': [
+            '/health',
+            '/api/generate-video',
+            '/api/job-status/<job_id>',
+            '/api/download-video/<job_id>',
+            '/api/available-options',
+            '/api/jobs',
+            '/api/job/<job_id> [DELETE]',
+            '/api/demo',
+            '/api/metrics',
+            '/outputs/<filename>'
+        ]
+    })
+
+@app.route('/outputs/<path:filename>', methods=['GET'])
+def serve_output_file(filename):
+    """Serve generated video or other output assets directly."""
+    safe_name = secure_filename(filename)
+    outputs_dir = app.config['OUTPUT_FOLDER']
+    file_path = os.path.join(outputs_dir, safe_name)
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'File not found'}), 404
+    try:
+        return send_from_directory(outputs_dir, safe_name, as_attachment=False)
+    except Exception as e:
+        logger.error(f"Error serving output file {filename}: {e}")
+        return jsonify({'error': 'Failed to serve file'}), 500
 
 @app.route('/api/generate-video', methods=['POST'])
 def generate_video():

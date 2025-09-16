@@ -12,7 +12,11 @@ from PIL import Image
 import moviepy.editor as mp
 from transformers import pipeline, AutoTokenizer, AutoModel
 import whisper
-from TTS.api import TTS
+try:
+    from TTS.api import TTS  # type: ignore
+    _TTS_AVAILABLE = True
+except Exception:
+    _TTS_AVAILABLE = False
 from diffusers import DiffusionPipeline
 
 # Configure logging
@@ -99,31 +103,41 @@ class TextProcessor:
         return list(set(words))
 
 class AudioGenerator:
-    """Generates audio narration from text"""
-    
+    """Generates audio narration from text (with fallback if TTS not installed)."""
+
     def __init__(self):
-        self.tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", 
-                      progress_bar=False, gpu=torch.cuda.is_available())
-    
+        self.available = _TTS_AVAILABLE
+        if self.available:
+            try:
+                self.tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC",
+                               progress_bar=False, gpu=torch.cuda.is_available())
+            except Exception as e:
+                logger.warning(f"Failed to init TTS: {e}; using silent fallback.")
+                self.available = False
+
     def generate_narration(self, text: str, config: VideoConfig) -> str:
-        """Generate audio narration"""
         output_path = f"temp_audio_{int(time.time())}.wav"
-        
-        # Adjust voice parameters based on tone and domain
-        voice_params = self._get_voice_parameters(config.tone, config.domain)
-        
-        self.tts.tts_to_file(
-            text=text,
-            file_path=output_path,
-            **voice_params
-        )
-        
+        if self.available:
+            params = self._get_voice_parameters(config.tone, config.domain)
+            try:
+                self.tts.tts_to_file(text=text, file_path=output_path, **params)
+                return output_path
+            except Exception as e:
+                logger.warning(f"TTS failed: {e}; generating silent audio.")
+        # Silent fallback
+        sr = 22050
+        import wave, struct
+        frames = int(config.duration * sr)
+        with wave.open(output_path, 'w') as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(sr)
+            silent = struct.pack('<h', 0)
+            w.writeframes(silent * frames)
         return output_path
-    
+
     def _get_voice_parameters(self, tone: Tone, domain: Domain) -> Dict:
-        """Get voice parameters based on tone and domain"""
         base_params = {"speaker_wav": None}
-        
         if tone == Tone.FORMAL:
             base_params.update({"speed": 0.9})
         elif tone == Tone.CASUAL:
@@ -132,7 +146,6 @@ class AudioGenerator:
             base_params.update({"speed": 0.8})
         elif tone == Tone.DOCUMENTARY:
             base_params.update({"speed": 0.95})
-            
         return base_params
 
 class VisualGenerator:
