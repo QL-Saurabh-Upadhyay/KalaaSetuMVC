@@ -26,4 +26,5 @@ pandas>=2.2.2,<3.0
 pytest
 python-dotenv
 moviepy
+gTTS
 whisper

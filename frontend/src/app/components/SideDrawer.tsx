@@ -15,16 +15,7 @@ export default function SideDrawer() {
         <h3 className="text-xs font-medium text-gray-600 dark:text-gray-300 leading-relaxed">AI-powered Visual Generation Tools</h3>
       </div>
       <nav className="flex flex-col gap-3 px-3">
-        <Link 
-          href="/dashboard"
-          className={`py-2.5 px-4 rounded-lg font-semibold text-base transition-all duration-200 text-left ${
-            pathname === "/dashboard"
-              ? "bg-gradient-to-r from-indigo-200 to-blue-200 dark:from-indigo-800 dark:to-blue-800 text-indigo-800 dark:text-indigo-200 shadow-lg"
-              : "bg-gradient-to-r from-indigo-100/80 to-blue-100/80 dark:from-indigo-900/40 dark:to-blue-900/40 hover:scale-105 hover:shadow-lg hover:bg-gradient-to-r hover:from-indigo-200 hover:to-blue-200 dark:hover:from-indigo-800 dark:hover:to-blue-800 text-indigo-700 dark:text-indigo-200"
-          } focus:outline-none focus:ring-2 focus:ring-indigo-400`}
-        >
-          Dashboard
-        </Link>
+        
         <Link 
           href="/infographic"
           className={`py-2.5 px-4 rounded-lg font-semibold text-base transition-all duration-200 text-left ${
@@ -54,6 +45,16 @@ export default function SideDrawer() {
           } focus:outline-none focus:ring-2 focus:ring-green-400`}
         >
           Text to Audio
+        </Link>
+        <Link 
+          href="/video"
+          className={`py-2.5 px-4 rounded-lg font-semibold text-base transition-all duration-200 text-left ${
+            pathname === "/video"
+              ? "bg-gradient-to-r from-indigo-200 to-blue-200 dark:from-indigo-800 dark:to-blue-800 text-indigo-800 dark:text-indigo-200 shadow-lg"
+              : "bg-gradient-to-r from-indigo-100/80 to-blue-100/80 dark:from-indigo-900/40 dark:to-blue-900/40 hover:scale-105 hover:shadow-lg hover:bg-gradient-to-r hover:from-indigo-200 hover:to-blue-200 dark:hover:from-indigo-800 dark:hover:to-blue-800 text-indigo-700 dark:text-indigo-200"
+          } focus:outline-none focus:ring-2 focus:ring-indigo-400`}
+        >
+          Text to Video
         </Link>
         <Link 
           href="/settings"

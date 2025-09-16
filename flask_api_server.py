@@ -237,7 +237,8 @@ def get_available_options():
         'tones': [tone.value for tone in Tone],
         'domains': [domain.value for domain in Domain],
         'environments': [env.value for env in Environment],
-        'languages': ['en', 'hi', 'es', 'fr', 'de'],  # Can be extended
+    # Supported languages (TTS: en via primary, hi/pa/ur via gTTS, else silent fallback)
+    'languages': ['en', 'hi', 'pa', 'ur'],
         'resolutions': [
             [1920, 1080],  # Full HD
             [1280, 720],   # HD
