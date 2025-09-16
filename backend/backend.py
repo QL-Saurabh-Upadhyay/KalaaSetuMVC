@@ -2,7 +2,7 @@ import nest_asyncio
 import os
 from pyngrok import ngrok
 from infograph_router import router as infograph_router
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, HTTPException
 from groq import Groq
 from PIL import Image
 import io, json, base64
@@ -10,7 +10,17 @@ import torch
 from diffusers import AutoPipelineForText2Image, DEISMultistepScheduler
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+
+# --- TTS related imports ---
+from pydantic import BaseModel
+from transformers import AutoTokenizer
+from parler_tts import ParlerTTSForConditionalGeneration
+import soundfile as sf
+import tempfile
+import socket
+import signal
+import sys
 
 nest_asyncio.apply()
 
@@ -40,6 +50,133 @@ app.include_router(infograph_router, prefix="/infograph")
 
 # Groq Client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+
+# ------------------------
+# TTS: language mapping, model loading, endpoints
+# ------------------------
+LANGUAGE_SPEAKERS = {
+    "assamese": ["Amit", "Sita", "Poonam", "Rakesh"],
+    "bengali": ["Arjun", "Aditi", "Tapan", "Rashmi", "Arnav", "Riya"],
+    "bodo": ["Bikram", "Maya", "Kalpana"],
+    "dogri": ["Karan"],
+    "english": ["Thoma", "Mary", "Swapna", "Dinesh", "Meera", "Jatin", "Aakash", "Sneha", "Kabir", "Tisha", "Chingkhei", "Thoiba", "Priya", "Tarun", "Gauri", "Nisha", "Raghav", "Kavya", "Ravi", "Vikas", "Riya"],
+    "gujarati": ["Yash", "Neha"],
+    "hindi": ["Rohit", "Divya", "Aman", "Rani"],
+    "kannada": ["Suresh", "Anu", "Chetan", "Vidya"],
+    "malayalam": ["Anjali", "Anju", "Harish"],
+    "manipuri": ["Laishram", "Ranjit"],
+    "marathi": ["Sanjay", "Sunita", "Nikhil", "Radha", "Varun", "Isha"],
+    "nepali": ["Amrita"],
+    "odia": ["Manas", "Debjani"],
+    "punjabi": ["Divjot", "Gurpreet"],
+    "sanskrit": ["Aryan"],
+    "tamil": ["Kavitha", "Jaya"],
+    "telugu": ["Prakash", "Lalitha", "Kiran"]
+}
+
+
+# TTS model & tokenizers (loaded onto the same device variable)
+try:
+    tts_model = ParlerTTSForConditionalGeneration.from_pretrained("ai4bharat/indic-parler-tts").to(device)
+    tts_tokenizer = AutoTokenizer.from_pretrained("ai4bharat/indic-parler-tts")
+    description_tokenizer = AutoTokenizer.from_pretrained(tts_model.config.text_encoder._name_or_path)
+except Exception as e:
+    # Defer failures to runtime; log import/load issues
+    print(f"TTS model or tokenizer failed to load: {e}")
+    tts_model = None
+    tts_tokenizer = None
+    description_tokenizer = None
+
+
+class TTSRequest(BaseModel):
+    text: str
+    target_language: str = "hi"
+    speaker: str = None
+    style: str = None
+
+
+def _build_description(request: TTSRequest, emotion: str) -> str:
+    parts = []
+    if request.speaker:
+        parts.append(f"{request.speaker}'s voice")
+    else:
+        default = LANGUAGE_SPEAKERS.get(request.target_language, ["neutral"])[0]
+        parts.append(f"{default}'s voice")
+    parts.append(f"expressing {emotion} emotion")
+    if request.style:
+        parts.append(request.style)
+    parts.append(f"speaking in {request.target_language}, clear and high quality")
+    return ", ".join(parts)
+
+
+@app.get("/tts/options")
+async def tts_options():
+    # Explicit JSONResponse to ensure content-type is application/json
+    print("/tts/options requested")
+    return JSONResponse(content={"languages": list(LANGUAGE_SPEAKERS.keys()), "speakers": LANGUAGE_SPEAKERS})
+
+
+@app.options("/tts/options")
+async def tts_options_options():
+    # respond to preflight requests or tooling that calls OPTIONS
+    return JSONResponse(content={"ok": True})
+
+
+@app.post("/tts")
+async def generate_tts(request: TTSRequest):
+    if tts_model is None or tts_tokenizer is None or description_tokenizer is None:
+        raise HTTPException(status_code=500, detail="TTS model not loaded on server. Check server logs and install required packages.")
+    try:
+        # Detect emotion using Groq LLM
+        emotion_prompt = f"Detect the primary emotion of this text in one word: '{request.text}'"
+        groq_response = client.chat.completions.create(
+            messages=[{"role": "user", "content": emotion_prompt}],
+            model="llama-3.3-70b-versatile",
+            temperature=0.3,
+            max_tokens=10
+        )
+        emotion = groq_response.choices[0].message.content.strip().lower()
+
+        # Translate if needed
+        if request.target_language.lower() != "auto":
+            translation_prompt = f"Translate this text to {request.target_language}: '{request.text} no need to ad any text other than translated text'"
+            translation_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": translation_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.3,
+                max_tokens=200
+            )
+            text_to_speak = translation_response.choices[0].message.content.strip()
+        else:
+            text_to_speak = request.text
+
+        description_text = _build_description(request, emotion)
+
+        prompt_input_ids = tts_tokenizer(text_to_speak, return_tensors="pt").to(device)
+        description_input_ids = description_tokenizer(description_text, return_tensors="pt").to(device)
+
+        generation = tts_model.generate(
+            input_ids=description_input_ids.input_ids,
+            attention_mask=description_input_ids.attention_mask,
+            prompt_input_ids=prompt_input_ids.input_ids,
+            prompt_attention_mask=prompt_input_ids.attention_mask,
+            do_sample=True,
+            temperature=0.7
+        )
+        audio_arr = generation.cpu().numpy().squeeze()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
+            sf.write(tmpfile.name, audio_arr, tts_model.config.sampling_rate)
+            return FileResponse(
+                tmpfile.name,
+                media_type="audio/wav",
+                filename=f"tts_{request.target_language}_{emotion}.wav",
+                headers={"Content-Disposition": "attachment"}
+            )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
 
 
 storyboard_system_prompt = """You are a visual assistant specialized in Storyboard Generation for image generation models.
@@ -156,6 +293,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Check port availability
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("localhost", port)) == 0
+
+if is_port_in_use(8081):
+    print("⚠️ Port 8081 is already in use! Stop previous server before running again.")
+    sys.exit(1)
+    
 # Start ngrok tunnel
 public_url = ngrok.connect(8081)
 print(f"Open this in your browser: {public_url}")
