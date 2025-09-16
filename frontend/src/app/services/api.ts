@@ -54,7 +54,9 @@ export interface SpeechGenerationResponse {
 
 export interface SpeechGenerationRequest {
   text: string;
-  emotion: string;
+  target_laguage?: string;
+  speaker?: string;
+ 
 }
 
 export interface GenerationRequest {
@@ -367,19 +369,41 @@ export const apiService = {
   // Generate speech with emotion
   async generateSpeech(request: SpeechGenerationRequest): Promise<SpeechGenerationResponse> {
     try {
-      const settings = getSettings();
-      if (!settings.audioBaseUrl) {
-        throw new Error('Audio API URL not configured');
+      // Use local Next.js proxy which forwards to the real backend configured
+      // via AUDIO_BASE_URL on the server. This keeps client-side code simple
+      // and avoids CORS/ngrok issues.
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'audio/*, application/json' },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const txt = await response.text().catch(() => '');
+        throw new Error(`Speech proxy failed: ${response.status} ${txt.substring(0, 300)}`);
       }
 
-      const apiClient = addInterceptors(createApiClient(settings.audioBaseUrl));
-      const response = await apiClient.post('/generate_speech', request);
-      
-      if (!response.data.audio_url) {
-        throw new Error(response.data.error || 'Speech generation failed');
+      const ct = response.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await response.json();
+        if (!data.audio_url && !data.success) {
+          throw new Error(data.error || 'Speech generation failed');
+        }
+        // If upstream returned JSON with audio_url, return it
+        return data;
       }
 
-      return response.data;
+      // Otherwise, assume binary audio stream was returned. Convert to blob URL.
+      const ab = await response.arrayBuffer();
+      const blob = new Blob([ab], { type: ct || 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      const filename = `tts_${Date.now()}.wav`;
+      return {
+        success: true,
+        audio_url: url,
+        filename,
+        message: 'Speech generated (proxied)'
+      };
     } catch (error) {
       throw handleApiError(error);
     }
@@ -478,4 +502,4 @@ export const handleApiError = (error: any): string => {
     }
     return error.message || 'An unexpected error occurred';
   }
-}; 
+};
