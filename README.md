@@ -64,3 +64,45 @@ docker-compose up --scale text-to-video-api=3
 # Generate video via API
 curl -X POST http://localhost:5000/api/generate-video \
   -H "Content-Type: application/json"
+```
+
+## 🌐 Multilingual Support (New)
+Supported languages (initial set):
+- English (en)
+- Hindi (hi)
+- Punjabi (pa)
+- Urdu (ur)
+
+Mechanism:
+- Primary Coqui TTS for English (if wheel available).
+- Fallback gTTS (cloud service) for hi / pa / ur / en.
+- If neither succeeds → silent audio placeholder (resilient path).
+
+Hindi request example:
+```bash
+curl -X POST http://127.0.0.1:5000/api/generate-video \
+  -H "Content-Type: application/json" \
+  -d '{"text":"भारत में डिजिटल साक्षरता पहल ग्रामीण समुदायों को सशक्त बना रही है।","language":"hi","tone":"informative","domain":"education","environment":"rural","duration":10}'
+```
+
+## 🐳 Docker Deployment (Lightweight Image)
+Build and run (models download on first request):
+```bash
+docker build -t kalasetu-mvc:latest .
+docker run --rm -p 5000:5000 kalasetu-mvc:latest
+```
+
+Visit: http://localhost:5000/
+
+Cache model weights across runs:
+```bash
+docker run --rm -p 5000:5000 \
+  -v $(pwd)/model_cache:/root/.cache/huggingface \
+  kalasetu-mvc:latest
+```
+
+## 🔐 Production Hardening (Next Steps)
+- API key / token auth
+- Rate limiting & request queuing
+- Persistent job metadata store (Postgres / Redis)
+- Pre-warm worker container on deploy

@@ -12,6 +12,12 @@ from PIL import Image
 import moviepy.editor as mp
 from transformers import pipeline, AutoTokenizer, AutoModel
 import whisper
+from contextlib import suppress
+try:
+    from gtts import gTTS  # Lightweight multilingual TTS fallback
+    _GTTS_AVAILABLE = True
+except Exception:
+    _GTTS_AVAILABLE = False
 try:
     from TTS.api import TTS  # type: ignore
     _TTS_AVAILABLE = True
@@ -106,25 +112,64 @@ class AudioGenerator:
     """Generates audio narration from text (with fallback if TTS not installed)."""
 
     def __init__(self):
-        self.available = _TTS_AVAILABLE
-        if self.available:
+        # Two-tier availability: Coqui TTS first, then gTTS fallback
+        self.primary_available = _TTS_AVAILABLE
+        self.gtts_available = _GTTS_AVAILABLE
+        if self.primary_available:
             try:
                 self.tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC",
                                progress_bar=False, gpu=torch.cuda.is_available())
             except Exception as e:
-                logger.warning(f"Failed to init TTS: {e}; using silent fallback.")
-                self.available = False
+                logger.warning(f"Failed to init primary TTS: {e}; will try gTTS.")
+                self.primary_available = False
 
     def generate_narration(self, text: str, config: VideoConfig) -> str:
+        """Generate narration in requested language.
+
+        Language handling priorities:
+        1. If primary TTS supports language (currently English only) and language == 'en'.
+        2. Else if gTTS available (supports many incl. hi, pa, ur) use it.
+        3. Else silent waveform fallback sized to duration.
+        """
         output_path = f"temp_audio_{int(time.time())}.wav"
-        if self.available:
+        lang = config.language.lower()
+        # Map user language codes to gTTS codes if needed
+        gtts_lang_map = {
+            'en': 'en',
+            'hi': 'hi',  # Hindi
+            'pa': 'pa',  # Punjabi
+            'punjabi': 'pa',
+            'ur': 'ur',  # Urdu
+            'urdu': 'ur'
+        }
+
+        # Try primary English TTS
+        if self.primary_available and lang == 'en':
             params = self._get_voice_parameters(config.tone, config.domain)
             try:
                 self.tts.tts_to_file(text=text, file_path=output_path, **params)
                 return output_path
             except Exception as e:
-                logger.warning(f"TTS failed: {e}; generating silent audio.")
-        # Silent fallback
+                logger.warning(f"Primary TTS failed: {e}; falling back to gTTS/silent.")
+
+        # Try gTTS multilingual
+        if self.gtts_available and lang in gtts_lang_map:
+            try:
+                tts_obj = gTTS(text=text, lang=gtts_lang_map[lang])
+                # gTTS outputs mp3; convert to wav for pipeline consistency
+                mp3_path = output_path.replace('.wav', '.mp3')
+                tts_obj.save(mp3_path)
+                # Convert mp3 to wav using moviepy (already imported)
+                audio_clip = mp.AudioFileClip(mp3_path)
+                audio_clip.write_audiofile(output_path, fps=22050)
+                audio_clip.close()
+                with suppress(Exception):
+                    os.remove(mp3_path)
+                return output_path
+            except Exception as e:
+                logger.warning(f"gTTS generation failed ({lang}): {e}; using silent fallback.")
+
+        # Silent fallback (duration-based)
         sr = 22050
         import wave, struct
         frames = int(config.duration * sr)
@@ -169,7 +214,11 @@ class VisualGenerator:
         os.makedirs(output_dir, exist_ok=True)
         
         for i, segment in enumerate(text_segments):
-            prompt = self._create_visual_prompt(segment, config)
+            try:
+                prompt = self._create_visual_prompt(segment, config)
+            except Exception as e:
+                logger.error(f"Prompt creation failed for segment {i}: {e}; using base text only")
+                prompt = segment
             logger.info(f"Prompt: {prompt}")
             try:
                 image = self.image_generator(
@@ -224,10 +273,14 @@ class VisualGenerator:
             Tone.FORMAL: "professional, formal composition",
             Tone.CASUAL: "relaxed, friendly atmosphere",
             Tone.EMOTIONAL: "emotional, expressive",
-            Tone.DOCUMENTARY: "documentary style, realistic"
+            Tone.DOCUMENTARY: "documentary style, realistic",
+            Tone.INFORMATIVE: "informative, clear, neutral",
+            Tone.PERSUASIVE: "persuasive, engaging, impactful"
         }
         
-        enhanced_prompt = f"{base_prompt}, {environment_modifiers[config.environment]}, {domain_styles[config.domain]}, {tone_styles[config.tone]}, high quality, detailed"
+        # Use .get with fallback in case new tone enums are added later
+        tone_style = tone_styles.get(config.tone, "professional, balanced style")
+        enhanced_prompt = f"{base_prompt}, {environment_modifiers[config.environment]}, {domain_styles[config.domain]}, {tone_style}, high quality, detailed"
         
         return enhanced_prompt
     
