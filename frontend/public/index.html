@@ -13,7 +13,7 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
             min-height: 100vh;
             padding: 20px;
         }
@@ -23,6 +23,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 15px;
+            background: white;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
         }
@@ -49,12 +50,14 @@
         .input-section {
             background: #f8f9fa;
             padding: 25px;
+            background: white;
             border-radius: 10px;
         }
         
         .output-section {
             background: #f8f9fa;
             padding: 25px;
+            background: white;
             border-radius: 10px;
         }
         
@@ -159,6 +162,7 @@
         .status-card {
             background: white;
             border-radius: 10px;
+            background: white;
             padding: 20px;
             margin-bottom: 20px;
             border-left: 4px solid #3498db;
@@ -201,6 +205,7 @@
         .metric-item {
             background: #ecf0f1;
             padding: 10px;
+            background: white;
             border-radius: 6px;
             text-align: center;
         }
@@ -456,9 +461,9 @@
         
         // Sample video URLs for demo (replace these with your actual video paths)
         const sampleVideos = {
-            pib_release: "http://0.0.0.0:8080/outputs/testone.mp4",
-            health_awareness: "http://0.0.0.0:8080/outputs/testtwo.mp4",
-            education_content: "http://0.0.0.0:8080/outputs/testthree.mp4"
+            pib_release: "/outputs/testone.mp4",
+            health_awareness: "/outputs/testtwo.mp4",
+            education_content: "/outputs/testthree.mp4"
         };
         
         function loadDemo(type) {

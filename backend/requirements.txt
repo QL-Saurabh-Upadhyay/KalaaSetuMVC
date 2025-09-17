@@ -1,0 +1,26 @@
+fastapi
+uvicorn
+nest-asyncio
+pyngrok
+jinja2
+groq
+diffusers
+transformers
+accelerate
+safetensors
+python-multipart
+# libcairo2-dev
+# pkg-config
+# python3-dev
+pandas
+diffusers
+torch
+transformers
+pillow
+reportlab
+cairosvg
+psutil
+googletrans
+werkzeug
+matplotlib
+parler_tts
