@@ -171,6 +171,7 @@ def generate_infographic_prompt(data, x_col, y_col, title, tone, color_scheme, c
     style = tone_styles.get(tone, "clean, professional style")
     colors = color_prompts.get(color_scheme, "blue color scheme")
     prompt = f"Modern infographic design, {style}, {colors}, data visualization, charts and graphs, {data_summary}, clean layout, white background, professional typography, high quality, detailed"
+    print(f"Generated prompt: {prompt}")
     return prompt
 
 def create_infographic_overlay(base_image: Image.Image, data, x_col, y_col, title, tone, color_scheme, language):
