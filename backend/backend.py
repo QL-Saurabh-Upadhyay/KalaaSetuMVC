@@ -115,7 +115,7 @@ except Exception as e:
 
 class TTSRequest(BaseModel):
     text: str
-    target_language: str = "hi"
+    target_laguage: str = "hindi"
     speaker: str = None
     style: str = None
 
@@ -124,12 +124,12 @@ def _build_description(request: TTSRequest, emotion: str) -> str:
     if request.speaker:
         parts.append(f"{request.speaker}'s voice")
     else:
-        default = LANGUAGE_SPEAKERS.get(request.target_language, ["neutral"])[0]
+        default = LANGUAGE_SPEAKERS.get(request.target_laguage, ["neutral"])[0]
         parts.append(f"{default}'s voice")
     parts.append(f"expressing {emotion} emotion")
     if request.style:
         parts.append(request.style)
-    parts.append(f"speaking in {request.target_language}, clear and high quality")
+    parts.append(f"speaking in {request.target_laguage}, clear and high quality")
     return ", ".join(parts)
 
 @app.get("/")
@@ -196,8 +196,8 @@ async def generate_tts(request: TTSRequest):
         emotion = groq_response.choices[0].message.content.strip().lower()
  
         # 2️⃣ Translate text if needed
-        if request.target_language.lower() != "auto":
-            translation_prompt = f"Translate this text to {request.target_language}: '{request.text}' no need to add any text other than translated text"
+        if request.target_laguage.lower() != "auto":
+            translation_prompt = f"Translate this text to {request.target_laguage}: '{request.text}' no need to add any text other than translated text"
             print(f"Translation prompt: {translation_prompt}")
             translation_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": translation_prompt}],
@@ -215,13 +215,13 @@ async def generate_tts(request: TTSRequest):
             description_parts.append(f"{request.speaker}'s voice")
         else:
             # Use default speaker based on language
-            default_speakers = LANGUAGE_SPEAKERS.get(request.target_language, ["neutral"])
+            default_speakers = LANGUAGE_SPEAKERS.get(request.target_laguage, ["neutral"])
             description_parts.append(f"{default_speakers[0]}'s voice")
         
         description_parts.append(f"expressing {emotion} emotion")
         if request.style:
             description_parts.append(request.style)
-        description_parts.append(f"speaking in {request.target_language}, clear and high quality")
+        description_parts.append(f"speaking in {request.target_laguage}, clear and high quality")
  
         description_text = ", ".join(description_parts)
  
@@ -246,7 +246,7 @@ async def generate_tts(request: TTSRequest):
             return FileResponse(
                 tmpfile.name,
                 media_type="audio/wav",
-                filename=f"tts_{request.target_language}_{emotion}.wav",
+                filename=f"tts_{request.target_laguage}_{emotion}.wav",
                 headers={"Content-Disposition": "attachment"}
             )
  
