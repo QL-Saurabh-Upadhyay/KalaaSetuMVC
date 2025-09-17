@@ -189,7 +189,7 @@ async def generate_tts(request: TTSRequest):
         emotion_prompt = f"Detect the primary emotion of this text in one word: '{request.text}'"
         groq_response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": emotion_prompt}],
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.3,
             max_tokens=10
         )
@@ -198,16 +198,17 @@ async def generate_tts(request: TTSRequest):
         # 2️⃣ Translate text if needed
         if request.target_language.lower() != "auto":
             translation_prompt = f"Translate this text to {request.target_language}: '{request.text}' no need to add any text other than translated text"
+            print(f"Translation prompt: {translation_prompt}")
             translation_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": translation_prompt}],
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-120b",
                 temperature=0.3,
                 max_tokens=200
             )
             text_to_speak = translation_response.choices[0].message.content.strip()
         else:
             text_to_speak = request.text
- 
+        print(f"Text to speak: {text_to_speak}")
         # 3️⃣ Build description for TTS
         description_parts = []
         if request.speaker:
