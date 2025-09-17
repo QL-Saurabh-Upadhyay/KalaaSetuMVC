@@ -261,10 +261,10 @@ export default function AudioPage() {
                   const s = options?.speakers?.[e.target.value];
                   if (s && s.length > 0) setSpeaker(s[0]);
                 }}
-                className="w-full p-2 rounded-lg border"
+                className="w-full p-2 rounded-lg border bg-black text-white"
               >
                 {options?.languages?.map((lang) => (
-                  <option key={lang} value={lang}>
+                  <option key={lang} value={lang} className="bg-black text-white">
                     {lang}
                   </option>
                 ))}
@@ -279,10 +279,10 @@ export default function AudioPage() {
               <select
                 value={speaker ?? ""}
                 onChange={(e) => setSpeaker(e.target.value)}
-                className="w-full p-2 rounded-lg border"
+                className="w-full p-2 rounded-lg border bg-black text-white"
               >
                 {options?.speakers?.[language]?.map((sp) => (
-                  <option key={sp} value={sp}>
+                  <option key={sp} value={sp} className="bg-black text-white">
                     {sp}
                   </option>
                 ))}
@@ -332,27 +332,7 @@ export default function AudioPage() {
           </div>
         )}
 
-        {/* Emotion Detection Result */}
-        {detectedEmotion && !isGenerating && (
-          <div className="bg-white/90 dark:bg-gray-800/90 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              Detected Emotion
-            </h2>
-            <div className="flex items-center gap-3">
-              <span
-                className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getEmotionColor(
-                  detectedEmotion
-                )}`}
-              >
-                {detectedEmotion.charAt(0).toUpperCase() +
-                  detectedEmotion.slice(1)}
-              </span>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                This emotion was used to generate the speech below
-              </p>
-            </div>
-          </div>
-        )}
+       
 
         {/* Audio Player */}
         {audioUrl && !isGenerating && (
