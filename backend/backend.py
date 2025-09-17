@@ -189,7 +189,7 @@ async def generate_tts(request: TTSRequest):
         emotion_prompt = f"Detect the primary emotion of this text in one word: '{request.text}'"
         groq_response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": emotion_prompt}],
-            model="openai/gpt-oss-120b",
+            model="llama-3.3-70b-versatile",
             temperature=0.3,
             max_tokens=10
         )
@@ -201,7 +201,7 @@ async def generate_tts(request: TTSRequest):
             print(f"Translation prompt: {translation_prompt}")
             translation_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": translation_prompt}],
-                model="openai/gpt-oss-120b",
+                model="llama-3.3-70b-versatile",
                 temperature=0.3,
                 max_tokens=200
             )
